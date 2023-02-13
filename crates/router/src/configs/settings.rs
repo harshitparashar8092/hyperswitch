@@ -154,6 +154,7 @@ pub struct Connectors {
 
     // Keep this field separate from the remaining fields
     pub supported: SupportedConnectors,
+	pub sagepay: ConnectorParams,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
