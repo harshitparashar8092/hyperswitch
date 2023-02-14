@@ -108,9 +108,13 @@ base_url = "https://apis.sandbox.globalpay.com/ucp/"
 [connectors.nuvei]
 base_url = "https://ppp-test.nuvei.com/"
 
+[connectors.sagepay]
+base_url = 
+
 [connectors.supported]
 wallets = ["klarna", "braintree", "applepay"]
 cards = [
+	"sagepay",
     "adyen",
     "authorizedotnet",
     "braintree",

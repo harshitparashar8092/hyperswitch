@@ -83,6 +83,7 @@ pub async fn construct_refund_router_data<'a, F>(
         }),
         access_token: None,
         session_token: None,
+        card_token: None,
     };
 
     Ok(router_data)

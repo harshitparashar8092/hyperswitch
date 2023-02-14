@@ -67,6 +67,9 @@ pub struct Authorize;
 
 #[derive(Debug, Clone)]
 pub struct PreAuthorize;
+
+#[derive(Debug, Clone)]
+pub struct CardTokenize;
 #[derive(Debug, Clone)]
 pub struct Capture;
 

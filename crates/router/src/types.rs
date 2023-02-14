@@ -13,8 +13,11 @@ pub mod transformers;
 use std::marker::PhantomData;
 
 pub use api_models::enums::Connector;
+use api_models::payments::Card;
 use common_utils::pii::Email;
 use error_stack::{IntoReport, ResultExt};
+use masking::PeekInterface;
+use storage_models::schema::locker_mock_up::{card_exp_month, card_exp_year};
 
 use self::{api::payments, storage::enums as storage_enums};
 pub use crate::core::payments::PaymentAddress;
@@ -24,6 +27,7 @@ pub type PaymentsAuthorizeRouterData =
     RouterData<api::Authorize, PaymentsAuthorizeData, PaymentsResponseData>;
 pub type PaymentsPreAuthorizeRouterData =
     RouterData<api::PreAuthorize, PreAuthorizeData, PaymentsResponseData>;
+pub type PaymentsCardTokenizeRouterData = RouterData<api::CardTokenize, CardTokenizeData, PaymentsResponseData>;
 pub type PaymentsSyncRouterData = RouterData<api::PSync, PaymentsSyncData, PaymentsResponseData>;
 pub type PaymentsCaptureRouterData =
     RouterData<api::Capture, PaymentsCaptureData, PaymentsResponseData>;
@@ -55,6 +59,8 @@ pub type PaymentsAuthorizeType =
     dyn services::ConnectorIntegration<api::Authorize, PaymentsAuthorizeData, PaymentsResponseData>;
 pub type PaymentsPreAuthorizeType =
     dyn services::ConnectorIntegration<api::PreAuthorize, PreAuthorizeData, PaymentsResponseData>;
+pub type PaymentsCardTokenizeType =
+    dyn services::ConnectorIntegration<api::CardTokenize, CardTokenizeData, PaymentsResponseData>;
 pub type PaymentsSyncType =
     dyn services::ConnectorIntegration<api::PSync, PaymentsSyncData, PaymentsResponseData>;
 pub type PaymentsCaptureType =
@@ -93,7 +99,7 @@ pub struct RouterData<Flow, Request, Response> {
     pub amount_captured: Option<i64>,
     pub access_token: Option<AccessToken>,
     pub session_token: Option<String>,
-
+    pub card_token: Option<String>,
     /// Contains flow-specific data required to construct a request and send it to the connector.
     pub request: Request,
 
@@ -136,6 +142,11 @@ pub struct PreAuthorizeData {
     pub currency: storage_enums::Currency,
     pub connector_transaction_id: String,
     pub amount: i64,
+}
+
+#[derive(Debug,Clone)]
+pub struct CardTokenizeData {
+    pub card_details: Card ,
 }
 
 #[derive(Debug, Clone)]
@@ -386,6 +397,7 @@ impl Default for ErrorResponse {
     }
 }
 
+
 impl From<&&mut PaymentsAuthorizeRouterData> for PaymentsPreAuthorizeRouterData {
     fn from(data: &&mut PaymentsAuthorizeRouterData) -> Self {
         PaymentsPreAuthorizeRouterData {
@@ -414,6 +426,56 @@ impl From<&&mut PaymentsAuthorizeRouterData> for PaymentsPreAuthorizeRouterData 
             payment_method_id: data.payment_method_id.clone(),
             payment_id: data.payment_id.clone(),
             session_token: data.session_token.clone(),
+            card_token: data.card_token.clone(),
+        }
+    }
+}
+
+impl From<&&mut PaymentsAuthorizeRouterData> for PaymentsCardTokenizeRouterData {
+    fn from(data: &&mut PaymentsAuthorizeRouterData) -> Self {
+        let mut card = Card{
+            card_number: masking::Secret::new("Dummy".to_owned()),
+            card_exp_month: masking::Secret::new("12".to_owned()),
+            card_cvc : masking::Secret::new("123".to_owned()),
+            card_exp_year : masking::Secret::new("12".to_owned()),
+            card_holder_name : masking::Secret::new("Dummy".to_owned())
+        };
+        match data.request.payment_method_data {
+                    api::PaymentMethod::Card(ref ccard) => 
+                    card = Card {
+                                card_number: ccard.card_number.clone(),
+                                card_exp_month: ccard.card_exp_month.clone(),
+                                card_exp_year: ccard.card_exp_year.clone(),
+                                card_cvc : ccard.card_cvc.clone(),
+                                card_holder_name : masking::Secret::new("John".to_owned()),
+                        },
+                    _ => ()
+                };
+
+        PaymentsCardTokenizeRouterData {
+            flow: PhantomData,
+            request: CardTokenizeData {
+                card_details : card
+            },
+            merchant_id: data.merchant_id.clone(),
+            connector: data.connector.clone(),
+            attempt_id: data.attempt_id.clone(),
+            status: data.status,
+            payment_method: data.payment_method,
+            connector_auth_type: data.connector_auth_type.clone(),
+            description: data.description.clone(),
+            return_url: data.return_url.clone(),
+            router_return_url: data.router_return_url.clone(),
+            address: data.address.clone(),
+            auth_type: data.auth_type,
+            connector_meta_data: data.connector_meta_data.clone(),
+            amount_captured: data.amount_captured,
+            access_token: data.access_token.clone(),
+            response: data.response.clone(),
+            payment_method_id: data.payment_method_id.clone(),
+            payment_id: data.payment_id.clone(),
+            session_token: data.session_token.clone(),
+            card_token: data.card_token.clone(),
         }
     }
 }
