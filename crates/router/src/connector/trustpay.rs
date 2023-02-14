@@ -116,10 +116,17 @@ impl
 
     fn get_url(
         &self,
-        _req: &types::PaymentsSyncRouterData,
-        _connectors: &settings::Connectors,
+        req: &types::PaymentsSyncRouterData,
+        connectors: &settings::Connectors,
     ) -> CustomResult<String, errors::ConnectorError> {
-        todo!()
+        let id = req.request.connector_transaction_id.clone();
+        Ok(format!(
+            "{}{}/{}",
+            self.base_url(connectors),
+            "instance",
+            id.get_connector_transaction_id()
+                .change_context(errors::ConnectorError::MissingConnectorTransactionID)?
+        ))
     }
 
     fn build_request(
@@ -151,13 +158,14 @@ impl
         logger::debug!(payment_sync_response=?res);
         let response: trustpay:: TrustpayPaymentsResponse = res
             .response
-            .parse_struct("trustpay PaymentsResponse")
+            .parse_struct("trustpay OrderResponse")
             .change_context(errors::ConnectorError::ResponseDeserializationFailed)?;
-        types::RouterData::try_from(types::ResponseRouterData {
+        types::ResponseRouterData {
             response,
             data: data.clone(),
             http_code: res.status_code,
-        })
+        }
+        .try_into()
         .change_context(errors::ConnectorError::ResponseHandlingFailed)
     }
 }
@@ -250,7 +258,6 @@ impl
         types::PaymentsResponseData,
     > for Trustpay
 {
-    //TODO: implement sessions flow
 }
 
 impl api::PaymentAuthorize for Trustpay {}
@@ -278,7 +285,9 @@ impl
 
     fn get_request_body(&self, req: &types::PaymentsAuthorizeRouterData) -> CustomResult<Option<String>,errors::ConnectorError> {
         let trustpay_req =
-            utils::Encode::<trustpay::TrustpayPaymentsRequest>::convert_and_encode(req).change_context(errors::ConnectorError::RequestEncodingFailed)?;
+            utils::Encode::<trustpay::TrustpayPaymentsRequest>::convert_and_url_encode(req).change_context(errors::ConnectorError::RequestEncodingFailed)?;
+        logger::info!("trustpay_req{:?}",trustpay_req);
+        println!("bodyyyyyyyy{:?}", trustpay_req);
         Ok(Some(trustpay_req))
     }
 

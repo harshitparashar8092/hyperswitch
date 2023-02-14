@@ -18,7 +18,6 @@ pub struct TrustpayPaymentsRequest {
 impl TryFrom<&types::PaymentsAuthorizeRouterData> for TrustpayPaymentsRequest  {
     type Error = error_stack::Report<errors::ConnectorError>;
     fn try_from(item: &types::PaymentsAuthorizeRouterData) -> Result<Self,Self::Error> {
-        let auth_type = TrustpayAuthType::try_from(&item.connector_auth_type)?;
         let amount = item.request.amount;
         let currency = item.request.currency;
         let payment_method = match item.request.payment_method_data.clone() {
@@ -46,7 +45,6 @@ impl TryFrom<&types::PaymentsAuthorizeRouterData> for TrustpayPaymentsRequest  {
     }
 }
 
-//TODO: Fill the struct with respective fields
 pub struct TrustpayAuthType {
     pub(super)    api_key: String
 }
@@ -85,7 +83,6 @@ impl Default for TrustpayPaymentStatus {
 impl From<TrustpayPaymentStatus> for enums::AttemptStatus {
     fn from(item: TrustpayPaymentStatus) -> Self {
         match item {
-            // TODO :: we are adding this
             TrustpayPaymentStatus::Success => Self::Charged,
             TrustpayPaymentStatus::Pending => Self::Pending,
             TrustpayPaymentStatus::Error => Self::Failure,
@@ -98,7 +95,6 @@ impl From<TrustpayPaymentStatus> for enums::AttemptStatus {
     }
 }
 
-//TODO: Fill the struct with respective fields
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TrustpayPaymentsResponse {
     pub status: TrustpayPaymentStatus,
@@ -127,7 +123,7 @@ impl<F,T> TryFrom<types::ResponseRouterData<F, TrustpayPaymentsResponse, T, type
 #[derive(Default, Debug, Serialize)]
 pub struct TrustpayRefundRequest {
     amount : i64,
-    instanceId : String,
+    instance_id : String,
     currency : enums::Currency,
 }
 
@@ -137,11 +133,11 @@ impl<F> TryFrom<&types::RefundsRouterData<F>> for TrustpayRefundRequest {
        let auth_type = TrustpayAuthType::try_from(&item.connector_auth_type);
         let amount = item.request.amount;
         let currency = item.request.currency;
-        let instanceId = item.request.connector_transaction_id.clone();
+        let instance_id = item.request.connector_transaction_id.clone();
         let req = Self {
             amount,
             currency,
-            instanceId,
+            instance_id,
         };
         println!("requestself{:?}",req);
         Ok(req)
@@ -169,13 +165,12 @@ impl From<RefundStatus> for enums::RefundStatus {
     }
 }
 
-//TODO: Fill the struct with respective fields
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct RefundResponse {
     status : RefundStatus,
     description: Option<String>,
-    instanceId : Option<String>,
-    paymentStatus :Option <String>,
+    instance_id : Option<String>,
+    payment_status :Option <String>,
 }
 
 impl TryFrom<types::RefundsResponseRouterData<api::Execute, RefundResponse>>
@@ -187,7 +182,7 @@ impl TryFrom<types::RefundsResponseRouterData<api::Execute, RefundResponse>>
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             response: Ok(types::RefundsResponseData {
-                connector_refund_id: item.response.instanceId.ok_or(errors::ConnectorError::MissingRequiredField { field_name: "instanceId" })?,
+                connector_refund_id: item.response.instance_id.ok_or(errors::ConnectorError::MissingRequiredField { field_name: "instanceId" })?,
                 refund_status: enums::RefundStatus::from(item.response.status),
             }),
             ..item.data
@@ -203,7 +198,6 @@ impl TryFrom<types::RefundsResponseRouterData<api::RSync, RefundResponse>> for t
      }
  }
 
-//TODO: Fill the struct with respective fields
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TrustpayErrorResponse {
     pub status: i32,
@@ -223,14 +217,14 @@ pub struct ErrorType {
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TrustPaySyncResponse {
     status : TrustpayPaymentStatus,
-    instanceId : String,
+    instance_id : String,
     created : String,
     amount : String,
     currency : String,
     reference : Option<String>,
-    paymentStatus :Option <String>,
-    paymentStatusDetails : Option<PaymentStatusD>,
-    threeDSecure : Option<ThreeDS>,
+    payment_status :Option <String>,
+    payment_status_details : Option<PaymentStatusD>,
+    three_dsecure : Option<ThreeDS>,
     card : Option<Card> ,
 }
 
@@ -238,12 +232,13 @@ pub struct TrustPaySyncResponse {
 pub struct TrustPayGenericResponse {
     status : TrustpayPaymentStatus,
     description: Option<String>,
-    instanceId : Option<String>,
-    redirectUrl : Option<String>,
-    redirectParams: Option<String>,
+    instance_id : Option<String>,
+    redirect_url : Option<String>,
+    payment_statusdetails : Option<PaymentStatusD>,
+    redirect_params: Option<String>,
     preconditions: Option<String>,
-    paymentStatus :Option <String>,
-    paymentStatusDetails : Option<PaymentStatusD>,
+    payment_status :Option <String>,
+    
 }
 
 
@@ -264,7 +259,7 @@ impl<F, T>
         Ok(Self {
             status: enums::AttemptStatus::from(item.response.status.clone()),
             response: Ok(types::PaymentsResponseData::TransactionResponse {
-                resource_id: types::ResponseId::ConnectorTransactionId(item.response.instanceId.clone()),
+                resource_id: types::ResponseId::ConnectorTransactionId(item.response.instance_id.clone()),
                 redirect: false,
                 redirection_data: None,
                 mandate_reference: None,
@@ -277,8 +272,8 @@ impl<F, T>
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PaymentStatusD {
-    extendedDescription : String,
-    schemeResponseCode : String,
+    extended_description : String,
+    scheme_response_code : String,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
@@ -288,7 +283,7 @@ pub struct ThreeDS {
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Card {
-    maskedPan : String,
+    masked_pan : String,
     expiration : String,
     description : Option<String>,
 }
@@ -297,6 +292,6 @@ pub struct Card {
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TrustpayCaptureRequest {
     amount : i64,
-    instanceId : String,
+    instance_id : String,
     currency : String,
 }
